@@ -311,6 +311,40 @@ test("key: config file is read when env has no credentials", async () => {
   assert.equal(backend({ JEV_GUARD_CONFIG: join(home, "missing.json") }), null);
 });
 
+test("typesafe: JEV_API_URL overrides the endpoint and JEV_API_KEY_FILE supplies a trimmed key before gateway credentials", async (t) => {
+  const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { ask } = await import("../src/jev.js");
+  const home = mkdtempSync(join(tmpdir(), "jev-key-file-"));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const file = join(home, "key");
+  writeFileSync(file, "  file-key\n");
+  const q = { x: { type: "noul", instructions: "?" }, y: { type: "score", instructions: "?" } };
+  const env = { JEV_API_URL: "http://fake/v1/systemone", JEV_API_KEY_FILE: file, AI_GATEWAY_API_KEY: "gateway-key", VERCEL_OIDC_TOKEN: "oidc-key" };
+  const result = await ask("s", q, { env, fetchImpl: async (url, init) => {
+    assert.equal(url, "http://fake/v1/systemone");
+    assert.equal(init.method, "POST");
+    assert.equal(init.headers.Authorization, "Bearer file-key");
+    assert.deepEqual(JSON.parse(init.body), { model: "jev-latest", state: "s", questions: q });
+    return { ok: true, json: async () => ({ answers: { x: { noul: 0.5 }, y: { score: 2 } } }) };
+  } });
+  assert.equal(result.x.p, 0.5);
+  assert.equal(result.y.score, 2);
+});
+
+test("typesafe: JEV_API_KEY wins over the key file and the default endpoint is unchanged", async () => {
+  const { ask } = await import("../src/jev.js");
+  for (const extra of [{}, { JEV_API_KEY_FILE: "/nonexistent/jev-key" }]) {
+    await ask("s", {}, { env: { JEV_API_KEY: "env-key", ...extra }, fetchImpl: async (url, init) => {
+      assert.equal(url, "https://api.typesafe.ai/v1/systemone");
+      assert.equal(init.headers.Authorization, "Bearer env-key");
+      assert.deepEqual(JSON.parse(init.body), { model: "jev-latest", state: "s", questions: {} });
+      return { ok: true, json: async () => ({ answers: {} }) };
+    } });
+  }
+});
+
 test("backends: OpenRouter and JEV_BASE_URL use the System One shape; a custom server never gets another provider's key", async () => {
   const { ask, backend, systemOneUrl } = await import("../src/jev.js");
   const q = { x: { type: "noul", instructions: "?" } };

@@ -174,6 +174,8 @@ Results shorter than 200 characters and results of local edit/search tools are s
 | `JEV_MODEL` | `jev-latest` / `jev-1.13` / `typesafe-ai/jev` | model id for TypeSafe or `JEV_BASE_URL` / OpenRouter / the gateway |
 | `JEV_BASE_URL` | unset | any System One server (`<base>/v1/systemone`), e.g. a local Kev; takes precedence over every key |
 | `JEV_BASE_API_KEY` | unset | bearer key sent only to `JEV_BASE_URL` |
+| `JEV_API_URL` | `https://api.typesafe.ai/v1/systemone` | overrides the TypeSafe endpoint, e.g. `https://openrouter.ai/api/v1/systemone`; set `JEV_MODEL` for that server |
+| `JEV_API_KEY_FILE` | unset | file containing the bearer key, trimmed; used when `JEV_API_KEY` is unset, before gateway credentials |
 | `JEV_GUARD_CONFIG` | `~/.jev-guard/config.json` | where `jev-guard key` stores the key |
 
 Scores must lie in 0–3 and probabilities in 0–1; anything else falls back to the default.

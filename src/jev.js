@@ -27,6 +27,7 @@ export const CONFIG_FILE = join(homedir(), ".jev-guard", "config.json");
 export function backend(env = process.env) {
   if (env.JEV_BASE_URL) return { kind: "custom", key: env.JEV_BASE_API_KEY, url: systemOneUrl(env.JEV_BASE_URL) };
   if (env.JEV_API_KEY) return { kind: "typesafe", key: env.JEV_API_KEY };
+  if (env.JEV_API_KEY_FILE) return { kind: "typesafe", key: readFileSync(env.JEV_API_KEY_FILE, "utf8").trim() };
   if (env.AI_GATEWAY_API_KEY) return { kind: "gateway", key: env.AI_GATEWAY_API_KEY, auth: "api-key" };
   if (env.VERCEL_OIDC_TOKEN) return { kind: "gateway", key: env.VERCEL_OIDC_TOKEN, auth: "oidc" };  // `vercel env pull`; expires in ~12h
   const cfg = readConfig(env);
@@ -63,7 +64,7 @@ export async function ask(state, questions, { env = process.env, fetchImpl = fet
   const budget = AbortSignal.timeout(timeoutMs ?? +(env.JEV_GUARD_TIMEOUT_MS || 20_000));
   const abort = signal ? AbortSignal.any([signal, budget]) : budget;
   const model = env.JEV_MODEL ?? DEFAULT_MODEL[b.kind];
-  const url = { custom: b.url, typesafe: TYPESAFE_URL, openrouter: OPENROUTER_URL, gateway: GATEWAY_URL }[b.kind];
+  const url = { custom: b.url, typesafe: env.JEV_API_URL ?? TYPESAFE_URL, openrouter: OPENROUTER_URL, gateway: GATEWAY_URL }[b.kind];
   const request = () => fetchImpl(url, {
     method: "POST",
     headers: gw
